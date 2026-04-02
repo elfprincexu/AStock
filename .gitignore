@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Data directories (large, local-only)
+pgdata/
+grafana_data/
+
+# Environment (contains secrets)
+.env
+backend/.env
+!.env.example
+
+# Celery
+backend/celerybeat-schedule.*
+
+# Local state
+.pids
+
+# IDE
+.idea/
+.claude/
+.pytest_cache/
+.github/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

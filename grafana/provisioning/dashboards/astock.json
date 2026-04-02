@@ -1,0 +1,305 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "股票选择",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "title": "最新价格概览",
+      "type": "table",
+      "datasource": { "type": "postgres", "uid": "${DS_ASTOCK-POSTGRESQL}" },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "rawSql": "SELECT s.code AS \"代码\", s.name AS \"名称\", s.market AS \"市场\",\n  q.price AS \"最新价\", q.change_pct AS \"涨跌幅(%)\",\n  q.volume AS \"成交量\", q.amount AS \"成交额\",\n  q.\"timestamp\" AS \"时间\"\nFROM quote_snapshots q\nJOIN stocks s ON s.id = q.stock_id\nWHERE q.id IN (\n  SELECT MAX(id) FROM quote_snapshots GROUP BY stock_id\n)\nORDER BY q.\"timestamp\" DESC",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" } }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "涨跌幅(%)" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "green", "value": -100 }, { "color": "red", "value": 0 }] } },
+              { "id": "color", "value": { "mode": "thresholds" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "分时价格走势",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "collapsed": false
+    },
+    {
+      "title": "日K线 - 收盘价",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "${DS_ASTOCK-POSTGRESQL}" },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "rawSql": "SELECT k.date AS time, k.close AS \"收盘价\", s.name AS metric\nFROM daily_klines k\nJOIN stocks s ON s.id = k.stock_id\nWHERE s.is_active = true\n  AND k.date >= NOW() - INTERVAL '$__interval'\nORDER BY k.date ASC",
+          "refId": "A",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "pointSize": 3,
+            "showPoints": "auto"
+          },
+          "unit": "currencyCNY"
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "min", "max"] }
+      }
+    },
+    {
+      "title": "日K线 - 成交量",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "${DS_ASTOCK-POSTGRESQL}" },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "rawSql": "SELECT k.date AS time, k.volume AS \"成交量\", s.name AS metric\nFROM daily_klines k\nJOIN stocks s ON s.id = k.stock_id\nWHERE s.is_active = true\n  AND k.date >= NOW() - INTERVAL '$__interval'\nORDER BY k.date ASC",
+          "refId": "A",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 50,
+            "lineWidth": 1
+          }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "mean"] }
+      }
+    },
+    {
+      "title": "涨跌幅分析",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "collapsed": false
+    },
+    {
+      "title": "涨跌幅趋势",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "${DS_ASTOCK-POSTGRESQL}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        {
+          "rawSql": "SELECT k.date AS time, k.change_pct AS \"涨跌幅(%)\", s.name AS metric\nFROM daily_klines k\nJOIN stocks s ON s.id = k.stock_id\nWHERE s.is_active = true\n  AND k.date >= NOW() - INTERVAL '$__interval'\nORDER BY k.date ASC",
+          "refId": "A",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "drawStyle": "line",
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "min", "max"] }
+      }
+    },
+    {
+      "title": "成交额排行",
+      "type": "barchart",
+      "datasource": { "type": "postgres", "uid": "${DS_ASTOCK-POSTGRESQL}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "targets": [
+        {
+          "rawSql": "SELECT s.name AS \"股票\", SUM(k.amount) / 100000000 AS \"成交额(亿元)\"\nFROM daily_klines k\nJOIN stocks s ON s.id = k.stock_id\nWHERE k.date >= CURRENT_DATE - INTERVAL '30 days'\nGROUP BY s.name\nORDER BY SUM(k.amount) DESC\nLIMIT 20",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "title": "抓取监控",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "collapsed": false
+    },
+    {
+      "title": "最近抓取日志",
+      "type": "table",
+      "datasource": { "type": "postgres", "uid": "${DS_ASTOCK-POSTGRESQL}" },
+      "gridPos": { "h": 6, "w": 16, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "rawSql": "SELECT l.created_at AS \"时间\",\n  COALESCE(s.code, '-') AS \"代码\",\n  COALESCE(s.name, '-') AS \"名称\",\n  l.fetch_type AS \"类型\",\n  l.status AS \"状态\",\n  l.message AS \"信息\"\nFROM fetch_logs l\nLEFT JOIN stocks s ON s.id = l.stock_id\nORDER BY l.created_at DESC\nLIMIT 30",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "状态" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              { "id": "mappings", "value": [{ "type": "value", "options": { "success": { "text": "成功", "color": "green" }, "error": { "text": "失败", "color": "red" } } }] }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "抓取统计",
+      "type": "stat",
+      "datasource": { "type": "postgres", "uid": "${DS_ASTOCK-POSTGRESQL}" },
+      "gridPos": { "h": 6, "w": 4, "x": 16, "y": 28 },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS \"今日抓取次数\"\nFROM fetch_logs\nWHERE created_at >= CURRENT_DATE",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "自选股数量",
+      "type": "stat",
+      "datasource": { "type": "postgres", "uid": "${DS_ASTOCK-POSTGRESQL}" },
+      "gridPos": { "h": 6, "w": 4, "x": 20, "y": 28 },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS \"活跃股票数\"\nFROM stocks\nWHERE is_active = true",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "purple", "value": null }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["astock", "A股"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": { "type": "postgres", "uid": "${DS_ASTOCK-POSTGRESQL}" },
+        "definition": "SELECT name || ' (' || code || ')' AS __text, id AS __value FROM stocks WHERE is_active = true ORDER BY code",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "stock",
+        "query": "SELECT name || ' (' || code || ')' AS __text, id AS __value FROM stocks WHERE is_active = true ORDER BY code",
+        "refresh": 2,
+        "type": "query",
+        "label": "股票"
+      },
+      {
+        "current": { "selected": true, "text": "90d", "value": "90 days" },
+        "hide": 0,
+        "name": "timerange",
+        "options": [
+          { "selected": false, "text": "7d", "value": "7 days" },
+          { "selected": false, "text": "30d", "value": "30 days" },
+          { "selected": true, "text": "90d", "value": "90 days" },
+          { "selected": false, "text": "180d", "value": "180 days" },
+          { "selected": false, "text": "1y", "value": "365 days" }
+        ],
+        "query": "7 days,30 days,90 days,180 days,365 days",
+        "type": "custom",
+        "label": "时间范围"
+      }
+    ]
+  },
+  "time": { "from": "now-90d", "to": "now" },
+  "timepicker": {},
+  "timezone": "Asia/Shanghai",
+  "title": "AStock A股数据看板",
+  "uid": "astock-main",
+  "version": 1
+}

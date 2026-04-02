@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Data directories (large, local-only)
+pgdata/
+grafana_data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local state
+.pids
+backend/celerybeat-schedule.*

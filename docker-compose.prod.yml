@@ -1,0 +1,139 @@
+# =============================================================
+#  AStock — Full Production Deployment (docker-compose.prod.yml)
+#  Usage:
+#    cp .env.example .env        # edit as needed
+#    docker compose -f docker-compose.prod.yml up -d --build
+# =============================================================
+
+services:
+  # ── Infrastructure ──────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: astock-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-astock}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-astock123}
+      POSTGRES_DB: ${POSTGRES_DB:-astock}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-astock}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: astock-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Backend API ─────────────────────────────────────────────
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: astock-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-astock}:${POSTGRES_PASSWORD:-astock123}@postgres:5432/${POSTGRES_DB:-astock}"
+      DATABASE_URL_SYNC: "postgresql+psycopg2://${POSTGRES_USER:-astock}:${POSTGRES_PASSWORD:-astock123}@postgres:5432/${POSTGRES_DB:-astock}"
+      REDIS_URL: "redis://redis:6379/0"
+    volumes:
+      - backend_env:/app/env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Celery Worker ───────────────────────────────────────────
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: astock-celery-worker
+    restart: unless-stopped
+    command: celery -A celery_app.celery worker --loglevel=info --concurrency=4
+    env_file: .env
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-astock}:${POSTGRES_PASSWORD:-astock123}@postgres:5432/${POSTGRES_DB:-astock}"
+      DATABASE_URL_SYNC: "postgresql+psycopg2://${POSTGRES_USER:-astock}:${POSTGRES_PASSWORD:-astock123}@postgres:5432/${POSTGRES_DB:-astock}"
+      REDIS_URL: "redis://redis:6379/0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Celery Beat (scheduler) ────────────────────────────────
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: astock-celery-beat
+    restart: unless-stopped
+    command: celery -A celery_app.celery beat --loglevel=info
+    env_file: .env
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-astock}:${POSTGRES_PASSWORD:-astock123}@postgres:5432/${POSTGRES_DB:-astock}"
+      DATABASE_URL_SYNC: "postgresql+psycopg2://${POSTGRES_USER:-astock}:${POSTGRES_PASSWORD:-astock123}@postgres:5432/${POSTGRES_DB:-astock}"
+      REDIS_URL: "redis://redis:6379/0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Frontend (Nginx + Vue SPA) ─────────────────────────────
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: astock-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+
+  # ── Grafana (optional monitoring) ──────────────────────────
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: astock-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  grafana_data:
+  backend_env:
