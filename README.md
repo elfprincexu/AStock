@@ -36,10 +36,6 @@
 ---
 
 ## 界面预览
-
-> 截图待补充 — 项目截图将放置在 `docs/screenshots/` 目录中
-
-<!-- 取消注释并替换为实际截图路径：
 <p align="center">
   <img src="docs/screenshots/dashboard.png" width="80%" alt="行情数据">
 </p>
@@ -57,7 +53,6 @@
 | 策略交易 | <img src="docs/screenshots/trade.png" width="600"> |
 
 </details>
--->
 
 ---
 
