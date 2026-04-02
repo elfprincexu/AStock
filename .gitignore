@@ -19,7 +19,7 @@ backend/.env
 !.env.example
 
 # Celery
-backend/celerybeat-schedule.*
+backend/celerybeat-schedule
 
 # Local state
 .pids
